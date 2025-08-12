@@ -94,6 +94,6 @@ try {
   if ($_.ErrorDetails) { Write-Host $_.ErrorDetails.Message }
 }
 
-Write-Host "`n完了。受信側でトースト表示とログ追記を確認してください。"
+Write-Host "`nDone. Please confirm toast notification and log append on the listener."
 
 
