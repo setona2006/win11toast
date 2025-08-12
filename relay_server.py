@@ -13,7 +13,7 @@ import json
 import os
 from typing import Dict
 
-from fastapi import FastAPI, Request, Header, HTTPException
+from fastapi import FastAPI, Request, HTTPException
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 try:
@@ -34,13 +34,12 @@ clients: Dict[str, WebSocket] = {}
 
 
 @app.websocket("/alerts")
-async def alerts(
-    ws: WebSocket,
-    authorization: str = Header(default=""),
-    x_client_id: str = Header(default=None),
-):
+async def alerts(ws: WebSocket):
+    # WebSocketはHeader依存性注入が効かない環境があるため、直接参照
+    authorization = ws.headers.get("authorization", "")
+    x_client_id = ws.headers.get("x-client-id")
     # 簡易認証（必要に応じて強化）
-    if not authorization.startswith("Bearer ") or x_client_id is None:
+    if not authorization.startswith("Bearer ") or not x_client_id:
         await ws.close(code=4001)
         return
     token = authorization[7:]
@@ -84,5 +83,3 @@ async def push(req: Request):
 @app.get("/health")
 def health():
     return {"ok": True, "clients": list(clients.keys())}
-
-
