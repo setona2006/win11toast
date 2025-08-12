@@ -1,0 +1,32 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "I",   # isort (import order)
+  "B",   # flake8-bugbear（潜在バグ）
+  "UP",  # pyupgrade（最新構文への更新）
+  "C4",  # flake8-comprehensions（内包表記の最適化）
+  "RUF", # Ruff 独自の補助的ルール
+]
+ignore = [
+  "E203",  # スライスのコロン前スペース（formatter互換）
+  "E501",  # 行長はformatter(ruff format)に任せる
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ucar_rt_listener"]
+profile = "black"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.format]
+quote-style = "preserve"
+indent-style = "space"
+line-ending = "auto"
+
+
