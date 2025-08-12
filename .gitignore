@@ -1,0 +1,19 @@
+﻿# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Local env
+.env
+
+# Logs & outputs
+*.log
+*.out
+*.err
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Nested repo folder
+win11toast/
