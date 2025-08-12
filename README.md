@@ -31,10 +31,10 @@ uvicorn relay_server:app --host 0.0.0.0 --port 8787
 ```powershell
 # 例: HTTP待受のホスト/ポートとWS中継設定を上書き
 $env:UCAR_HTTP_HOST = '127.0.0.1'
-$env:UCAR_HTTP_PORT = '8787'
+$env:UCAR_HTTP_PORT = '8789'   # リレー(WS)と被らないよう受信HTTPは8789に変更
 $env:UCAR_WSS        = 'ws://127.0.0.1:8787/alerts'
-$env:UCAR_PUSH_TOKEN = '<PUSH_TOKEN>'
-$env:UCAR_CLIENT_ID  = 'minato-pc-01'
+$env:UCAR_PUSH_TOKEN = '<PUSH_TOKEN>'  # または $env:PUSH_TOKEN
+$env:UCAR_CLIENT_ID  = 'minato-pc-01'  # または $env:CLIENT_ID
 
 python .\ucar_rt_listener.py
 ```

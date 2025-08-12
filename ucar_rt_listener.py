@@ -93,8 +93,9 @@ def _show_toast(title: str, msg: str) -> Optional[str]:
 
 # --- WebSocket クライアント（クラウドのリレーへ接続） -------------------------
 UCAR_WSS = os.getenv("UCAR_WSS", "ws://127.0.0.1:8787/alerts")
-ACCESS_TOKEN = os.getenv("UCAR_PUSH_TOKEN", "")
-CLIENT_ID = os.getenv("UCAR_CLIENT_ID", "minato-pc-01")
+# トークン/クライアントIDは UCAR_ プレフィクス付き/無しの両方を許容
+ACCESS_TOKEN = os.getenv("UCAR_PUSH_TOKEN") or os.getenv("PUSH_TOKEN", "CHANGE_ME")
+CLIENT_ID = os.getenv("UCAR_CLIENT_ID") or os.getenv("CLIENT_ID", "minato-pc-01")
 
 
 async def _ws_loop() -> None:
@@ -105,6 +106,7 @@ async def _ws_loop() -> None:
     client = TestClient(app)
     while True:
         try:
+            print(f"[WS] connecting -> {UCAR_WSS} as {CLIENT_ID}")
             async with websockets.connect(
                 UCAR_WSS,
                 extra_headers={
@@ -115,6 +117,7 @@ async def _ws_loop() -> None:
                 ping_timeout=10,
                 max_size=1_000_000,
             ) as ws:
+                print("[WS] connected ✔")
                 while True:
                     msg = await ws.recv()
                     try:
@@ -124,6 +127,7 @@ async def _ws_loop() -> None:
                         # 受信エラーは握りつぶして継続
                         pass
         except Exception:
+            print("[WS] disconnected — retry in 3s")
             time.sleep(3)
 
 
@@ -163,7 +167,8 @@ if __name__ == "__main__":
     # ローカル限定で待ち受け（環境変数で上書き可能）
     host = os.getenv("UCAR_HTTP_HOST", "127.0.0.1")
     try:
-        port = int(os.getenv("UCAR_HTTP_PORT", "8787"))
+        # 受信HTTPはデフォルト8789（8787はWSリレー用）
+        port = int(os.getenv("UCAR_HTTP_PORT", "8789"))
     except ValueError:
-        port = 8787
+        port = 8789
     uvicorn.run(app, host=host, port=port, log_level="info")
