@@ -19,7 +19,7 @@ pip install -r requirements.txt
 ### リレー（クラウド/サーバ側）
 
 ```powershell
-uvicorn relay_server:app --host 0.0.0.0 --port 8788
+uvicorn relay_server:app --host 0.0.0.0 --port 8787
 ```
 - `.env` を用意（`PUSH_TOKEN` と `ALLOW_CLIENTS`）。サンプル: `.env.example`
 - 公開時は HTTPS/WSS 終端（Nginx/Caddy など）推奨
@@ -68,7 +68,7 @@ import time; print(time.time())
 ### リレー経由のテスト（curl）
 
 ```bash
-curl -X POST "http://<relay-host>:8788/push" \
+curl -X POST "http://<relay-host>:8787/push" \
   -H "Authorization: Bearer <PUSH_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{

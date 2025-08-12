@@ -88,7 +88,7 @@ def _show_toast(title: str, msg: str) -> Optional[str]:
 
 
 # --- WebSocket クライアント（クラウドのリレーへ接続） -------------------------
-UCAR_WSS = os.getenv("UCAR_WSS", "")
+UCAR_WSS = os.getenv("UCAR_WSS", "ws://127.0.0.1:8787/alerts")
 ACCESS_TOKEN = os.getenv("UCAR_PUSH_TOKEN", "")
 CLIENT_ID = os.getenv("UCAR_CLIENT_ID", "minato-pc-01")
 
@@ -158,5 +158,3 @@ if __name__ == "__main__":
         pass
     # ローカル限定で待ち受け
     uvicorn.run(app, host="127.0.0.1", port=8787, log_level="info")
-
-
