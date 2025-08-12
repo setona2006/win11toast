@@ -74,21 +74,24 @@ try {
 Write-Host "[6/6] /push 疎通テスト送信"
 $pushUrl = "http://${RelayHost}:${RelayPort}/push"
 $ts = [double]([DateTimeOffset]::Now.ToUnixTimeMilliseconds()/1000)
-$body = @{
-  target  = $ClientId
-  payload = @{
-    ts      = $ts
-    level   = 'info'
-    message = '【UCAR→直送】疎通テスト'
-    meta    = @{ symbol = 'USDJPY'; price = 148.25 }
+$json = @"
+{
+  "target": "$ClientId",
+  "payload": {
+    "ts": $ts,
+    "level": "info",
+    "message": "【UCAR→直送】疎通テスト",
+    "meta": { "symbol": "USDJPY", "price": 148.25 }
   }
-} | ConvertTo-Json -Depth 6
+}
+"@
 
 try {
-  $res = Invoke-RestMethod -Method Post -Uri $pushUrl -Headers @{ Authorization = "Bearer $token" } -ContentType 'application/json; charset=utf-8' -Body $body -TimeoutSec 5
+  $res = Invoke-RestMethod -Method Post -Uri $pushUrl -Headers @{ Authorization = "Bearer $token" } -ContentType 'application/json; charset=utf-8' -Body $json -TimeoutSec 5
   Write-Host "  /push レスポンス:" ($res | ConvertTo-Json -Depth 4)
 } catch {
   Write-Host "  ❌ /push 送信失敗:" $_.Exception.Message
+  if ($_.ErrorDetails) { Write-Host $_.ErrorDetails.Message }
 }
 
 Write-Host "`n完了。受信側でトースト表示とログ追記を確認してください。"
