@@ -16,6 +16,14 @@ from pydantic import BaseModel, Field
 import uvicorn
 
 try:
+    # .env 読込（PUSH_TOKEN/ALLOW_CLIENTS ほか）
+    from dotenv import load_dotenv  # type: ignore
+
+    load_dotenv()
+except Exception:
+    pass
+
+try:
     from win10toast import ToastNotifier
 
     TOASTER = ToastNotifier()
@@ -98,6 +106,25 @@ ACCESS_TOKEN = os.getenv("UCAR_PUSH_TOKEN") or os.getenv("PUSH_TOKEN", "CHANGE_M
 CLIENT_ID = os.getenv("UCAR_CLIENT_ID") or os.getenv("CLIENT_ID", "minato-pc-01")
 
 
+_ws_thread_started = False
+
+
+def start_ws_in_background() -> None:
+    global _ws_thread_started
+    if _ws_thread_started:
+        return
+    if websockets is None:
+        print("[WS] disabled: websockets package not installed")
+        _ws_thread_started = True  # avoid repeated logs
+        return
+    if not UCAR_WSS:
+        print("[WS] disabled: UCAR_WSS is empty")
+        _ws_thread_started = True
+        return
+    threading.Thread(target=lambda: asyncio.run(_ws_loop()), daemon=True).start()
+    _ws_thread_started = True
+
+
 async def _ws_loop() -> None:
     if not UCAR_WSS or websockets is None:
         return
@@ -107,28 +134,56 @@ async def _ws_loop() -> None:
     while True:
         try:
             print(f"[WS] connecting -> {UCAR_WSS} as {CLIENT_ID}")
-            async with websockets.connect(
-                UCAR_WSS,
-                extra_headers={
-                    "Authorization": f"Bearer {ACCESS_TOKEN}",
-                    "X-Client-ID": CLIENT_ID,
-                },
-                ping_interval=20,
-                ping_timeout=10,
-                max_size=1_000_000,
-            ) as ws:
-                print("[WS] connected ✔")
-                while True:
-                    msg = await ws.recv()
-                    try:
-                        payload = json.loads(msg)
-                        client.post("/alert", json=payload)
-                    except Exception:
-                        # 受信エラーは握りつぶして継続
-                        pass
-        except Exception:
-            print("[WS] disconnected — retry in 3s")
+            headers = {
+                "Authorization": f"Bearer {ACCESS_TOKEN}",
+                "X-Client-ID": CLIENT_ID,
+            }
+            # websockets のバージョン差異に対応
+            try:
+                async with websockets.connect(
+                    UCAR_WSS,
+                    additional_headers=headers,  # websockets >= 11
+                    ping_interval=20,
+                    ping_timeout=10,
+                    max_size=1_000_000,
+                ) as ws:
+                    print("[WS] connected OK")
+                    while True:
+                        msg = await ws.recv()
+                        try:
+                            payload = json.loads(msg)
+                            client.post("/alert", json=payload)
+                        except Exception:
+                            pass
+            except TypeError:
+                async with websockets.connect(
+                    UCAR_WSS,
+                    extra_headers=headers,  # websockets <= 10
+                    ping_interval=20,
+                    ping_timeout=10,
+                    max_size=1_000_000,
+                ) as ws:
+                    print("[WS] connected OK")
+                    while True:
+                        msg = await ws.recv()
+                        try:
+                            payload = json.loads(msg)
+                            client.post("/alert", json=payload)
+                        except Exception:
+                            # 受信エラーは握りつぶして継続
+                            pass
+        except Exception as e:
+            print(f"[WS] disconnected - retry in 3s ({e!r})")
             time.sleep(3)
+
+
+@app.on_event("startup")
+async def _on_startup_ws() -> None:
+    # Uvicorn経由起動（`uvicorn ucar_rt_listener:app`）でもWSを開始する
+    try:
+        start_ws_in_background()
+    except Exception:
+        pass
 
 
 @app.post("/alert")
@@ -161,7 +216,7 @@ def receive_alert(a: Alert) -> Dict[str, Any]:
 if __name__ == "__main__":
     # リレーが設定されていればバックグラウンドでWS接続
     try:
-        threading.Thread(target=lambda: asyncio.run(_ws_loop()), daemon=True).start()
+        start_ws_in_background()
     except Exception:
         pass
     # ローカル限定で待ち受け（環境変数で上書き可能）
