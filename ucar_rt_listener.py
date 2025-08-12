@@ -22,6 +22,10 @@ try:
 except Exception:
     TOASTER = None  # 通知不可でもログは動かす
 
+# トースト無効化（CIやサーバー運用時など）
+if os.getenv("UCAR_DISABLE_TOAST", "0") == "1":
+    TOASTER = None
+
 # WS クライアント（オプション）
 try:
     import websockets  # type: ignore
@@ -156,5 +160,10 @@ if __name__ == "__main__":
         threading.Thread(target=lambda: asyncio.run(_ws_loop()), daemon=True).start()
     except Exception:
         pass
-    # ローカル限定で待ち受け
-    uvicorn.run(app, host="127.0.0.1", port=8787, log_level="info")
+    # ローカル限定で待ち受け（環境変数で上書き可能）
+    host = os.getenv("UCAR_HTTP_HOST", "127.0.0.1")
+    try:
+        port = int(os.getenv("UCAR_HTTP_PORT", "8787"))
+    except ValueError:
+        port = 8787
+    uvicorn.run(app, host=host, port=port, log_level="info")

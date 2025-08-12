@@ -24,11 +24,18 @@ uvicorn relay_server:app --host 0.0.0.0 --port 8787
 - `.env` を用意（`PUSH_TOKEN` と `ALLOW_CLIENTS`）。サンプル: `.env.example`
 - 公開時は HTTPS/WSS 終端（Nginx/Caddy など）推奨
 
-### 起動
+### 起動（環境変数で上書き可能）
 
 どちらでもOKです。
 
 ```powershell
+# 例: HTTP待受のホスト/ポートとWS中継設定を上書き
+$env:UCAR_HTTP_HOST = '127.0.0.1'
+$env:UCAR_HTTP_PORT = '8787'
+$env:UCAR_WSS        = 'ws://127.0.0.1:8787/alerts'
+$env:UCAR_PUSH_TOKEN = '<PUSH_TOKEN>'
+$env:UCAR_CLIENT_ID  = 'minato-pc-01'
+
 python .\ucar_rt_listener.py
 ```
 
