@@ -5,6 +5,30 @@ __pycache__/
 
 # Local env
 .env
+.env.*
+env.local
+*.secret
+secrets.*
+*.key
+*.pem
+*.pfx
+*.cer
+*.crt
+*.p12
+*.keystore
+*.jks
+
+# Common config overrides
+*.local.json
+*.local.yaml
+*.local.yml
+*.local.toml
+*.local.ini
+*.override.json
+*.override.yaml
+*.override.yml
+*.override.toml
+*.override.ini
 
 # Logs & outputs
 *.log
