@@ -62,7 +62,7 @@ if (-not (Test-Path $envPath)) {
 
 Write-Host "[4/6] 現在の .env 内容:"; Get-Content $envPath | ForEach-Object { "  $_" }
 
-$healthUrl = "http://$RelayHost`:$RelayPort/health"
+$healthUrl = "http://$RelayHost:$RelayPort/health"
 Write-Host "[5/6] /health 確認: $healthUrl"
 try {
   $health = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 5
@@ -72,7 +72,7 @@ try {
 }
 
 Write-Host "[6/6] /push 疎通テスト送信"
-$pushUrl = "http://$RelayHost`:$RelayPort/push"
+$pushUrl = "http://$RelayHost:$RelayPort/push"
 $ts = [double]([DateTimeOffset]::Now.ToUnixTimeMilliseconds()/1000)
 $body = @{
   target  = $ClientId
@@ -80,15 +80,15 @@ $body = @{
     ts      = $ts
     level   = 'info'
     message = '【UCAR→直送】疎通テスト'
-    meta    = @{ symbol='USDJPY'; price=148.25 }
+    meta    = @{
+      symbol = 'USDJPY'
+      price  = 148.25
+    }
   }
 } | ConvertTo-Json -Depth 6
 
 try {
-  $res = Invoke-RestMethod -Method Post -Uri $pushUrl `
-    -Headers @{ Authorization = "Bearer $token" } `
-    -ContentType 'application/json; charset=utf-8' `
-    -Body $body -TimeoutSec 5
+  $res = Invoke-RestMethod -Method Post -Uri $pushUrl -Headers @{ Authorization = "Bearer $token" } -ContentType 'application/json; charset=utf-8' -Body $body -TimeoutSec 5
   Write-Host "  /push レスポンス:" ($res | ConvertTo-Json -Depth 4)
 } catch {
   Write-Host "  ❌ /push 送信失敗:" $_.Exception.Message
