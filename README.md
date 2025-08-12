@@ -16,6 +16,14 @@ py -m venv .venv
 pip install -r requirements.txt
 ```
 
+### リレー（クラウド/サーバ側）
+
+```powershell
+uvicorn relay_server:app --host 0.0.0.0 --port 8788
+```
+- `.env` を用意（`PUSH_TOKEN` と `ALLOW_CLIENTS`）。サンプル: `.env.example`
+- 公開時は HTTPS/WSS 終端（Nginx/Caddy など）推奨
+
 ### 起動
 
 どちらでもOKです。
@@ -55,6 +63,19 @@ curl -X POST "http://127.0.0.1:8787/alert" ^
 import time; print(time.time())
 ^PY
 ), ""level"": ""info"", ""message"": ""テスト通知"", ""meta"": {""symbol"": ""USDJPY""}}"
+```
+
+### リレー経由のテスト（curl）
+
+```bash
+curl -X POST "http://<relay-host>:8788/push" \
+  -H "Authorization: Bearer <PUSH_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target":"minato-pc-01",
+    "payload": { "ts": 1723456789.321, "level":"info",
+      "message":"【UCAR→直送】CPI: 初動上ヒゲ", "meta":{"symbol":"USDJPY","price":148.19} }
+  }'
 ```
 
 ### ログ保存先

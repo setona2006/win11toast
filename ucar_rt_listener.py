@@ -5,6 +5,10 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Literal
 
 import json
+import os
+import asyncio
+import time
+import threading
 import traceback
 
 from fastapi import FastAPI
@@ -17,6 +21,12 @@ try:
     TOASTER = ToastNotifier()
 except Exception:
     TOASTER = None  # 通知不可でもログは動かす
+
+# WS クライアント（オプション）
+try:
+    import websockets  # type: ignore
+except Exception:
+    websockets = None
 
 
 class Alert(BaseModel):
@@ -77,6 +87,42 @@ def _show_toast(title: str, msg: str) -> Optional[str]:
         return traceback.format_exc()
 
 
+# --- WebSocket クライアント（クラウドのリレーへ接続） -------------------------
+UCAR_WSS = os.getenv("UCAR_WSS", "")
+ACCESS_TOKEN = os.getenv("UCAR_PUSH_TOKEN", "")
+CLIENT_ID = os.getenv("UCAR_CLIENT_ID", "minato-pc-01")
+
+
+async def _ws_loop() -> None:
+    if not UCAR_WSS or websockets is None:
+        return
+    from fastapi.testclient import TestClient
+
+    client = TestClient(app)
+    while True:
+        try:
+            async with websockets.connect(
+                UCAR_WSS,
+                extra_headers={
+                    "Authorization": f"Bearer {ACCESS_TOKEN}",
+                    "X-Client-ID": CLIENT_ID,
+                },
+                ping_interval=20,
+                ping_timeout=10,
+                max_size=1_000_000,
+            ) as ws:
+                while True:
+                    msg = await ws.recv()
+                    try:
+                        payload = json.loads(msg)
+                        client.post("/alert", json=payload)
+                    except Exception:
+                        # 受信エラーは握りつぶして継続
+                        pass
+        except Exception:
+            time.sleep(3)
+
+
 @app.post("/alert")
 def receive_alert(a: Alert) -> Dict[str, Any]:
     """UCARクラウドからのアラートを受信し、ログ追記とトースト通知を行う。"""
@@ -105,6 +151,11 @@ def receive_alert(a: Alert) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
+    # リレーが設定されていればバックグラウンドでWS接続
+    try:
+        threading.Thread(target=lambda: asyncio.run(_ws_loop()), daemon=True).start()
+    except Exception:
+        pass
     # ローカル限定で待ち受け
     uvicorn.run(app, host="127.0.0.1", port=8787, log_level="info")
 
