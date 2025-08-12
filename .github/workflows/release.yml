@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    env:
+      UCAR_DISABLE_TOAST: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Attach version to artifact name
+        id: ver
+        shell: pwsh
+        run: |
+          $v = Get-Content VERSION -Raw
+          echo "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Create archive
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path README.md, requirements.txt, ucar_rt_listener.py -DestinationPath dist/win11toast-$env:GITHUB_SHA.zip -Force
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/win11toast-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
