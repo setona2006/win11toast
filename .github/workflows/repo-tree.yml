@@ -1,4 +1,4 @@
-name: Build Repo Tree  # refresh registration
+name: Build Repo Tree
 
 on:
   push:
