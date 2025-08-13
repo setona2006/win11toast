@@ -7,6 +7,10 @@ jobs:
   tree:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Test"
+      - uses: actions/checkout@v4
+      - name: List files
+        run: |
+          echo "=== Repository Files ==="
+          ls -R
 
 
