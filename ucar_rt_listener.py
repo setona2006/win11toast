@@ -23,16 +23,63 @@ try:
 except Exception:
     pass
 
-try:
-    from win10toast import ToastNotifier
+TOAST_BACKEND = "none"
+_toast_winotify = None
+_toast_win10 = None
+_toast_win11 = None
 
-    TOASTER = ToastNotifier()
+# 優先: winotify → win10toast → win11toast（win11toastはwinsdkビルドが必要なため任意）
+try:
+    from winotify import Notification, audio  # type: ignore
+
+    def _toast_winotify(title: str, msg: str) -> Optional[str]:
+        try:
+            n = Notification(app_id="UCAR", title=title, msg=msg, duration="short")
+            n.set_audio(audio.Default, loop=False)
+            n.show()
+            return None
+        except Exception:
+            return traceback.format_exc()
+
+    TOAST_BACKEND = "winotify"
 except Exception:
-    TOASTER = None  # 通知不可でもログは動かす
+    pass
+
+if TOAST_BACKEND == "none":
+    try:
+        from win10toast import ToastNotifier  # type: ignore
+
+        _TOASTER = ToastNotifier()
+
+        def _toast_win10(title: str, msg: str) -> Optional[str]:
+            try:
+                _TOASTER.show_toast(title, msg, duration=3, threaded=True)
+                return None
+            except Exception:
+                return traceback.format_exc()
+
+        TOAST_BACKEND = "win10toast"
+    except Exception:
+        pass
+
+if TOAST_BACKEND == "none":
+    try:
+        from win11toast import toast as _win11_toast  # type: ignore
+
+        def _toast_win11(title: str, msg: str) -> Optional[str]:
+            try:
+                _win11_toast(title, msg)
+                return None
+            except Exception:
+                return traceback.format_exc()
+
+        TOAST_BACKEND = "win11toast"
+    except Exception:
+        TOAST_BACKEND = "none"
 
 # トースト無効化（CIやサーバー運用時など）
 if os.getenv("UCAR_DISABLE_TOAST", "0") == "1":
-    TOASTER = None
+    TOAST_BACKEND = "none"
 
 # WS クライアント（オプション）
 try:
@@ -89,14 +136,15 @@ def _append_log_line(line: str, now: Optional[datetime] = None) -> None:
 
 def _show_toast(title: str, msg: str) -> Optional[str]:
     """トースト表示。失敗時は例外文字列を返す（HTTP応答へ含める用）。"""
-    if TOASTER is None:
-        return "win10toast not available (import failed)"
-    try:
-        # 非ブロッキングで3秒表示
-        TOASTER.show_toast(title, msg, duration=3, threaded=True)
-        return None
-    except Exception:
-        return traceback.format_exc()
+    if TOAST_BACKEND == "none":
+        return "toast backend not available"
+    if TOAST_BACKEND == "win11toast" and _toast_win11 is not None:
+        return _toast_win11(title, msg)
+    if TOAST_BACKEND == "winotify" and _toast_winotify is not None:
+        return _toast_winotify(title, msg)
+    if TOAST_BACKEND == "win10toast" and _toast_win10 is not None:
+        return _toast_win10(title, msg)
+    return "toast backend not available"
 
 
 # --- WebSocket クライアント（クラウドのリレーへ接続） -------------------------
@@ -128,9 +176,8 @@ def start_ws_in_background() -> None:
 async def _ws_loop() -> None:
     if not UCAR_WSS or websockets is None:
         return
-    from fastapi.testclient import TestClient
+    import httpx  # type: ignore
 
-    client = TestClient(app)
     while True:
         try:
             print(f"[WS] connecting -> {UCAR_WSS} as {CLIENT_ID}")
@@ -152,9 +199,17 @@ async def _ws_loop() -> None:
                         msg = await ws.recv()
                         try:
                             payload = json.loads(msg)
-                            client.post("/alert", json=payload)
-                        except Exception:
-                            pass
+                            local_host = os.getenv("UCAR_HTTP_HOST", "127.0.0.1")
+                            try:
+                                local_port = int(os.getenv("UCAR_HTTP_PORT", "8789"))
+                            except ValueError:
+                                local_port = 8789
+                            url = f"http://{local_host}:{local_port}/alert"
+                            with httpx.Client(timeout=5.0) as client:
+                                r = client.post(url, json=payload)
+                                print(f"[WS] forwarded to {url} status={r.status_code}")
+                        except Exception as e:
+                            print(f"[WS] forward error: {e!r}")
             except TypeError:
                 async with websockets.connect(
                     UCAR_WSS,
@@ -168,10 +223,18 @@ async def _ws_loop() -> None:
                         msg = await ws.recv()
                         try:
                             payload = json.loads(msg)
-                            client.post("/alert", json=payload)
-                        except Exception:
+                            local_host = os.getenv("UCAR_HTTP_HOST", "127.0.0.1")
+                            try:
+                                local_port = int(os.getenv("UCAR_HTTP_PORT", "8789"))
+                            except ValueError:
+                                local_port = 8789
+                            url = f"http://{local_host}:{local_port}/alert"
+                            with httpx.Client(timeout=5.0) as client:
+                                r = client.post(url, json=payload)
+                                print(f"[WS] forwarded to {url} status={r.status_code}")
+                        except Exception as e:
                             # 受信エラーは握りつぶして継続
-                            pass
+                            print(f"[WS] forward error: {e!r}")
         except Exception as e:
             print(f"[WS] disconnected - retry in 3s ({e!r})")
             time.sleep(3)
