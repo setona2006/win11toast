@@ -1,3 +1,12 @@
+name: README Summary (diag)
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "readme-summary minimal OK"
 name: Update README summary into repo_tree.md
 
 on:
