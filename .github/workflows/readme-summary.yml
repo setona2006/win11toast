@@ -7,6 +7,9 @@ on:
       - "README.md"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: readme-summary-${{ github.ref }}
   cancel-in-progress: true
