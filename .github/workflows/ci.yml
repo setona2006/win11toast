@@ -1,4 +1,4 @@
-name: CI (disabled)
+name: CI (removed)
 
 on:
   workflow_dispatch:
@@ -7,6 +7,6 @@ jobs:
   noop:
     runs-on: ubuntu-latest
     steps:
-      - run: echo ci disabled
+      - run: echo removed
 
 
