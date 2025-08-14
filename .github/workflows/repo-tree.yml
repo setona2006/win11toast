@@ -8,15 +8,3 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "Hello World"
-name: Build Repo Tree
-
-on:
-  workflow_dispatch:
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Hello World"
-name: Build Repo Tree
-
