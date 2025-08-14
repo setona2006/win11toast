@@ -1,4 +1,4 @@
-﻿name: Update README summary into repo_tree.md
+name: Update README summary into repo_tree.md
 
 on:
   workflow_dispatch:
