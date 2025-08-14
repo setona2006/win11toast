@@ -8,9 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: List files
+      - name: List files (stage 2)
         run: |
-          echo "=== Repository Files ==="
-          ls -R
+          echo "=== Repository Files (long) ==="
+          ls -lah
+          echo "=== Tree (max depth 2) ==="
+          find . -maxdepth 2 -type f | sed 's|^\./||'
 
 
