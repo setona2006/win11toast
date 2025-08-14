@@ -1,6 +1,8 @@
 name: Build Repo Tree
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
