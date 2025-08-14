@@ -6,10 +6,77 @@ on:
     branches: [ main ]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diag:
+  tree:
     runs-on: ubuntu-latest
     steps:
-      - run: echo repo-tree diag ok
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Generate repo_tree.json / repo_tree.md
+        shell: bash
+        run: |
+          python - <<'PY'
+import json
+import pathlib
+import os
+
+root = pathlib.Path('.')
+EXCLUDES = {'.git', '.venv', 'node_modules', 'dist', 'build', '__pycache__'}
+
+def excluded(p: pathlib.Path) -> bool:
+    return any(part in EXCLUDES for part in p.parts)
+
+items = []
+for p in root.rglob('*'):
+    if excluded(p):
+        continue
+    kind = 'dir' if p.is_dir() else 'file'
+    size = p.stat().st_size if p.is_file() else None
+    items.append({
+        'path': str(p.relative_to(root)),
+        'type': kind,
+        'size': size,
+    })
+
+items.sort(key=lambda x: (x['type'] != 'dir', x['path'].lower()))
+
+pathlib.Path('repo_tree.json').write_text(
+    json.dumps(items, ensure_ascii=False, indent=2), encoding='utf-8')
+
+def indent(path: str) -> str:
+    return '  ' * path.count(os.sep)
+
+lines = ['# Repository Tree', '']
+for it in items:
+    p = it['path']
+    if not p:
+        continue
+    if it['type'] == 'dir':
+        lines.append(f"{indent(p)}- 📁 {p}")
+    else:
+        kb = f" ({it['size']/1024:.1f} KB)" if it['size'] is not None else ''
+        lines.append(f"{indent(p)}- 📄 {p}{kb}")
+
+pathlib.Path('repo_tree.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+print('generated repo_tree.json / repo_tree.md')
+PY
+
+      - name: Commit tree files
+        shell: bash
+        run: |
+          git config user.name "repo-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add repo_tree.json repo_tree.md
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore: update repo tree"
+            git push
+          fi
