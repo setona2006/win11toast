@@ -14,5 +14,47 @@ jobs:
           ls -lah
           echo "=== Tree (max depth 2) ==="
           find . -maxdepth 2 -type f | sed 's|^\./||'
+      - name: Generate repo_tree.json and repo_tree.md (stage 3)
+        run: |
+          python3 - <<'PY'
+import os, json, pathlib
+root = pathlib.Path('.')
+tree = []
+for p in root.rglob('*'):
+    if '.git' in p.parts:
+        continue
+    kind = 'dir' if p.is_dir() else 'file'
+    tree.append({
+        'path': str(p.relative_to(root)),
+        'type': kind,
+        'size': (p.stat().st_size if p.is_file() else None),
+    })
+tree.sort(key=lambda x: (x['type']!='dir', x['path'].lower()))
+pathlib.Path('repo_tree.json').write_text(json.dumps(tree, ensure_ascii=False, indent=2), encoding='utf-8')
+
+def indent(path: str) -> str:
+    return '  ' * path.count(os.sep)
+
+lines = ['# Repository Tree\n']
+for item in tree:
+    p = item['path']
+    if p == '.':
+        continue
+    if item['type'] == 'dir':
+        lines.append(f"{indent(p)}- 📁 {p}")
+    else:
+        size = item['size']
+        kb = f" ({size/1024:.1f} KB)" if size is not None else ''
+        lines.append(f"{indent(p)}- 📄 {p}{kb}")
+pathlib.Path('repo_tree.md').write_text('\n'.join(lines), encoding='utf-8')
+print('generated repo_tree.json and repo_tree.md')
+PY
+      - name: Commit tree files (stage 4)
+        run: |
+          git config user.name "repo-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add repo_tree.json repo_tree.md
+          git diff --cached --quiet || git commit -m "chore: update repo tree"
+          git push
 
 
