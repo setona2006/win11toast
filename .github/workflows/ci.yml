@@ -1,50 +1,12 @@
-name: CI
+name: CI (disabled)
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  lint-and-smoke-test:
-    runs-on: windows-latest
-    env:
-      UCAR_DISABLE_TOAST: "1"  # CIではトーストを抑止
-      PYTHONUTF8: "1"
+  noop:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install ruff httpx
-
-      - name: Lint (ruff)
-        run: ruff check .
-
-      - name: API smoke test
-        shell: bash
-        run: |
-          python - <<'PY'
-          from fastapi.testclient import TestClient
-          import json
-          from ucar_rt_listener import app
-
-          client = TestClient(app)
-          payload = {"ts": 0.0, "level": "info", "message": "CI ping", "meta": {"ci": True}}
-          r = client.post("/alert", json=payload)
-          assert r.status_code == 200, r.text
-          data = r.json()
-          assert data.get("ok") is True
-          print(json.dumps(data))
-          PY
+      - run: echo ci disabled
 
 

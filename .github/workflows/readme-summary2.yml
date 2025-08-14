@@ -1,12 +1,12 @@
-name: README Summary (diag2)
+name: README Summary (diag2 disabled)
 
 on:
   workflow_dispatch:
 
 jobs:
-  diag:
+  noop:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "readme-summary2 minimal OK"
+      - run: echo disabled
 
 
