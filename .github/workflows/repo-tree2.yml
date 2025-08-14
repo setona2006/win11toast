@@ -1,0 +1,12 @@
+name: Build Repo Tree (diag)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ok:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "repo-tree minimal OK"
+
+
