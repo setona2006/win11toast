@@ -1,0 +1,12 @@
+name: README Summary (diag2)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "readme-summary2 minimal OK"
+
+
